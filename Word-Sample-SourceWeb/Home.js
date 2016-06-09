@@ -1,130 +1,206 @@
-﻿/// <reference path="/Scripts/FabricUI/MessageBanner.js" />
+﻿/// <reference path="../App.js" />
 
 
 (function () {
     "use strict";
 
-    var messageBanner;
-
-    // The initialize function must be run each time a new page is loaded.
+    // The initialize function must be run each time a new page is loaded
     Office.initialize = function (reason) {
         $(document).ready(function () {
-            // Initialize the FabricUI notification mechanism and hide it
-            var element = document.querySelector('.ms-MessageBanner');
-            messageBanner = new fabric.MessageBanner(element);
-            messageBanner.hideBanner();
-
-            // If not using Word 2016, use fallback logic.
-            if (!Office.context.requirements.isSetSupported('WordApi', '1.1')) {
-                $("#template-description").text("This sample displays the selected text.");
-                $('#button-text').text("Display!");
-                $('#button-desc').text("Display the selected text");
-                
-                $('#highlight-button').click(
-                    displaySelectedText);
-                return;
-            }
-
-            $("#template-description").text("This sample highlights the longest word in the text you have selected in the document.");
-            $('#button-text').text("Highlight!");
-            $('#button-desc').text("Highlights the longest word.");
-            
-            loadSampleData();
-
-            // Add a click event handler for the highlight button.
-            $('#highlight-button').click(
-                hightlightLongestWord);
+            $('#run-sample').click(runSample);
         });
     };
 
-    function loadSampleData() {
+    function runSample() {
 
-        // Run a batch operation against the Word object model.
-        Word.run(function (context) {
-
-            // Create a proxy object for the document body.
-            var body = context.document.body;
-
-            // Queue a commmand to clear the contents of the body.
-            body.clear();
-            // Queue a command to insert text into the end of the Word document body.
-            body.insertText("This is a sample text inserted in the document",
-                            Word.InsertLocation.end);
-
-            // Synchronize the document state by executing the queued commands, and return a promise to indicate task completion.
-            return context.sync();
-        })
-        .catch(errorHandler);
-    }
-
-    function hightlightLongestWord() {
+        var context = Office.context;
 
         Word.run(function (context) {
 
-            // Queue a command to get the current selection and then
-            // create a proxy range object with the results.
-            var range = context.document.getSelection();
-            
-            // variable for keeping the search results for the longest word.
-            var searchResults;
-            
-            // Queue a command to load the range selection result.
-            context.load(range, 'text');
-
-            // Synchronize the document state by executing the queued commands
-            // and return a promise to indicate task completion.
             return context.sync()
-                .then(function () {
-                
-                    // Get the longest word from the selection.
-                    var words = range.text.split(/\s+/);
-                    var longestWord = words.reduce(function (word1, word2) { return word1.length > word2.length ? word1 : word2; });
-
-                    // Queue a search command.
-                    searchResults = context.document.body.search(longestWord, { matchCase: true, matchWholeWord: true });
-
-                    // Queue a commmand to load the font property of the results.
-                    context.load(searchResults, 'font');
-
-                })
-                .then(context.sync)
-                .then(function () {
-                    // Queue a command to highlight the search results.
-                    searchResults.items[0].font.highlightColor = '#FFFF00'; // Yellow
-                    searchResults.items[0].font.bold = true;
-                })
-                .then(context.sync)
-        })
-        .catch(errorHandler);
-    } 
+                .then(processHyperlinks())
+                .then(processTables())
+                .then(processParagraphs())
+                .then(processWords());
 
 
-    function displaySelectedText() {
-        Office.context.document.getSelectedDataAsync(Office.CoercionType.Text,
-            function (result) {
-                if (result.status === Office.AsyncResultStatus.Succeeded) {
-                    showNotification('The selected text is:', '"' + result.value + '"');
-                } else {
-                    showNotification('Error:', result.error.message);
-                }
-            });
-    }
+            // return processWords();
+            // return processHyperlinks();
 
-    //$$(Helper function for treating errors, $loc_script_taskpane_home_js_comment34$)$$
-    function errorHandler(error) {
-        // $$(Always be sure to catch any accumulated errors that bubble up from the Word.run execution., $loc_script_taskpane_home_js_comment35$)$$
-        showNotification("Error:", error);
-        console.log("Error: " + error);
-        if (error instanceof OfficeExtension.Error) {
-            console.log("Debug info: " + JSON.stringify(error.debugInfo));
-        }
-    }
+            function processHyperlinks() {
+                var hyperlinks = context.document.body.getRange().getHyperlinkRanges();
+                hyperlinks.load();
 
-    // Helper function for displaying notifications
-    function showNotification(header, content) {
-        $("#notificationHeader").text(header);
-        $("#notificationBody").text(content);
-        messageBanner.showBanner();
-        messageBanner.toggleExpansion();
+                return context.sync().then(function () {
+                    for (var i = 0; i < hyperlinks.items.length; i++) {
+                        var link = hyperlinks.items[i];
+                        var mdLink = '[' + link.text + '](' + link.hyperlink + ') ';
+                        link.hyperlink = "";
+                        link.insertText(mdLink, 'Replace');
+                    }
+                });
+            }
+
+            function processTables() {
+                var tables = context.document.body.tables;
+                tables.load()
+
+                context.sync().then(function () {
+                    for (var i = 0; i < tables.items.length; i++) {
+                        var table = tables.items[i];
+
+                        for (var j = 0; j < table.rowCount; j++) {
+                            var row = table.values[j];
+
+                            var rowParagraph = table.insertParagraph('| ', 'Before');
+                            rowParagraph.style = 'Normal';
+
+                            for (var k = 0; k < row.length; k++) {
+                                var cell = row[k];
+
+                                if (j < table.headerRowCount) {
+                                    rowParagraph.insertText('**' + cell + '** | ', 'End');
+                                }
+                                else {
+                                    rowParagraph.insertText(cell + ' | ', 'End');
+                                }
+                                console.log();
+                            }
+                        }
+                        table.deleteRows(0, table.rowCount);
+                    }
+                });
+            }
+
+            function processParagraphs() {
+                var paragraphs = context.document.body.paragraphs;
+                paragraphs.load();
+
+                return context.sync().then(function () {
+                    var isCode = false;
+                    var isList = false;
+
+
+                    for (var i = 0; i < paragraphs.items.length; i++) {
+                        var paragraph = paragraphs.items[i];
+                        console.log('Processing paragraph #' + i);
+                        if (paragraph.style.indexOf('Code') === -1) {
+                            if (isCode) {
+                                var oldStyle = paragraph.style;
+                                paragraph.style = 'Normal';
+                                paragraph.insertParagraph('```', 'Before');
+                                paragraph.style = oldStyle;
+                                isCode = false;
+                            }
+                        }
+
+                        if (paragraph.style.indexOf('List') === -1) {
+                            if (isList) {
+                                var oldStyle = paragraph.style;
+                                paragraph.style = 'Normal';
+                                paragraph.insertParagraph('', 'Before');
+                                paragraph.style = oldStyle;
+                                isList = false;
+                            }
+                        }
+
+                        // Only process a paragraph outside of a table.
+                        if (paragraph.tableNestingLevel === 0) {
+                            if (paragraph.style.startsWith('Heading')) {
+                                if (paragraph.style.endsWith('1')) {
+                                    paragraph.insertText('# ', 'Start');
+                                }
+                                else if (paragraph.style.endsWith('2')) {
+                                    paragraph.insertText('## ', 'Start');
+                                } else if (paragraph.style.endsWith('3')) {
+                                    paragraph.insertText('### ', 'Start');
+                                } else if (paragraph.style.endsWith('4')) {
+                                    paragraph.insertText('#### ', 'Start');
+                                }
+                                paragraph.style = 'Normal'
+                            }
+
+                            else if (paragraph.style.startsWith('Emphasis')) {
+                                paragraph.insertText('*', 'Start');
+                                paragraph.insertText('*', 'End');
+                                paragraph.insertParagraph('', 'After');
+                                paragraph.style = 'Normal';
+                            }
+
+                            else if (paragraph.style.indexOf('Code') >= 0) {
+                                if (!isCode) {
+                                    paragraph.insertParagraph('```', 'Before');
+                                    isCode = true;
+                                }
+                            }
+
+                            else if (paragraph.style.indexOf('List') >= 0) {
+                                paragraph.insertText('* ', 'Start');
+                                paragraph.style = 'Normal';
+                                isList = true;
+                            }
+
+                            else if (paragraph.style.indexOf('Normal') >= 0) {
+                                paragraph.style = 'Normal';
+                                paragraph.insertParagraph('', 'After');
+                            }
+
+                            else {
+                                paragraph.insertText('[' + paragraph.style + ' is unknown style] ', 'Start');
+                            }
+
+                        }
+                    }
+                });
+            }
+
+            function processWords() {
+                var paragraphs = context.document.body.paragraphs;
+                paragraphs.load();
+
+                return context.sync().then(function () {
+                    for (var i = 0; i < paragraphs.items.length; i++)
+                        handleWords(paragraphs.items[i]);
+                });
+
+                function handleWords(paragraph) {
+                    var wordRanges = paragraph.getTextRanges([' '], true);
+                    wordRanges.load("font");
+
+                    context.sync().then(function () {
+                        for (var i = 0; i < wordRanges.items.length; i++) {
+                            var word = wordRanges.items[i];
+
+                            var previousWord = wordRanges.items[i - 1];
+                            var nextWord = wordRanges.items[i + 1];
+
+                            if (word.font.bold) {
+                                if ((previousWord != undefined) && !previousWord.font.bold) {
+                                    word.insertText('**', 'Start');
+                                }
+                                if ((nextWord != undefined) && !nextWord.font.bold) {
+                                    word.insertText('**', 'End');
+                                }
+                            }
+
+                            if (word.font.italic) {
+                                if ((previousWord != undefined) && !previousWord.font.italic) {
+                                    word.insertText('*', 'Start');
+                                }
+                                if ((nextWord != undefined) && !nextWord.font.italic) {
+                                    word.insertText('*', 'End');
+                                }
+                            }
+                        }
+                    });
+                };
+            }
+        }).catch(function (error) {
+            console.log("Error: " + error);
+            if (error instanceof OfficeExtension.Error) {
+                console.log("Debug info: " + JSON.stringify(error.debugInfo));
+                console.log("Trace info: " + JSON.stringify(error.traceMessages));
+            }
+        });
     }
 })();
