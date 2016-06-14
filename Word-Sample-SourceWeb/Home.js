@@ -16,11 +16,10 @@
         Word.run(function (context) {
 
             return context.sync()
-                .then(processHyperlinks())
-                .then(processTables())
-                .then(processParagraphs())
-                .then(processWords());
-
+                .then(processHyperlinks)
+                .then(processTables)
+                .then(processParagraphs)
+                .then(processWords);
 
             // return processWords();
             // return processHyperlinks();
@@ -164,13 +163,15 @@
 
                 return context.sync().then(function () {
                     console.log("8) processWords loop");
-                    for (var i = 0; i < paragraphs.items.length; i++)
+                    for (var i = 0; i < paragraphs.items.length; i++) {
+                        console.log("9) processing paragraph " + i);
                         handleWords(paragraphs.items[i]);
+                    }
                 });
 
                 function handleWords(paragraph) {
                     var wordRanges = paragraph.getTextRanges([' '], true);
-                    wordRanges.load("font");
+                    wordRanges.load("font, text");
 
                     context.sync().then(function () {
                         for (var i = 0; i < wordRanges.items.length; i++) {
@@ -180,19 +181,21 @@
                             var nextWord = wordRanges.items[i + 1];
 
                             if (word.font.bold) {
-                                if ((previousWord != undefined) && !previousWord.font.bold) {
+                                console.log('bold word found: ' + word.text);
+                                if ((typeof previousWord === 'undefined') || !previousWord.font.bold) {
                                     word.insertText('**', 'Start');
                                 }
-                                if ((nextWord != undefined) && !nextWord.font.bold) {
+                                if ((typeof nextWord === 'undefined') || !nextWord.font.bold) {
                                     word.insertText('**', 'End');
                                 }
                             }
 
                             if (word.font.italic) {
-                                if ((previousWord != undefined) && !previousWord.font.italic) {
+                                console.log('italic word found: ' + word.text);
+                                if ((typeof previousWord === 'undefined') || !previousWord.font.italic) {
                                     word.insertText('*', 'Start');
                                 }
-                                if ((nextWord != undefined) && !nextWord.font.italic) {
+                                if ((typeof nextWord === 'undefined') || !nextWord.font.italic) {
                                     word.insertText('*', 'End');
                                 }
                             }
