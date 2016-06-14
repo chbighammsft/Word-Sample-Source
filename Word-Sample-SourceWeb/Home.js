@@ -109,21 +109,21 @@
 
                         // Only process a paragraph outside of a table.
                         if (paragraph.tableNestingLevel === 0) {
-                            if (paragraph.style.startsWith('Heading')) {
-                                if (paragraph.style.endsWith('1')) {
+                            if (paragraph.style.indexOf('Heading') >= 0) {
+                                if (paragraph.style.indexOf('1') >= 0) {
                                     paragraph.insertText('# ', 'Start');
                                 }
-                                else if (paragraph.style.endsWith('2')) {
+                                else if (paragraph.style.indexOf('2') >= 0) {
                                     paragraph.insertText('## ', 'Start');
-                                } else if (paragraph.style.endsWith('3')) {
+                                } else if (paragraph.style.indexOf('3') >= 0) {
                                     paragraph.insertText('### ', 'Start');
-                                } else if (paragraph.style.endsWith('4')) {
+                                } else if (paragraph.style.indexOf('4') >= 0) {
                                     paragraph.insertText('#### ', 'Start');
                                 }
                                 paragraph.style = 'Normal'
                             }
 
-                            else if (paragraph.style.startsWith('Emphasis')) {
+                            else if (paragraph.style.indexOf('Emphasis') >= 0) {
                                 paragraph.insertText('*', 'Start');
                                 paragraph.insertText('*', 'End');
                                 paragraph.insertParagraph('', 'After');
