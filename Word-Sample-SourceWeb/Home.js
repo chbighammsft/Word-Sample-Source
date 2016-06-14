@@ -1,6 +1,4 @@
-﻿/// <reference path="../App.js" />
-
-
+﻿
 (function () {
     "use strict";
 
@@ -28,10 +26,12 @@
             // return processHyperlinks();
 
             function processHyperlinks() {
+                console.log("1) processHyperlinks called");
                 var hyperlinks = context.document.body.getRange().getHyperlinkRanges();
                 hyperlinks.load();
 
                 return context.sync().then(function () {
+                    console.log("2) processHyperlinks loop");
                     for (var i = 0; i < hyperlinks.items.length; i++) {
                         var link = hyperlinks.items[i];
                         var mdLink = '[' + link.text + '](' + link.hyperlink + ') ';
@@ -42,10 +42,12 @@
             }
 
             function processTables() {
+                console.log("3) processTables called");
                 var tables = context.document.body.tables;
                 tables.load()
 
                 context.sync().then(function () {
+                    console.log("4) processTables loop");
                     for (var i = 0; i < tables.items.length; i++) {
                         var table = tables.items[i];
 
@@ -73,6 +75,7 @@
             }
 
             function processParagraphs() {
+                console.log("5) processParagraphs called");
                 var paragraphs = context.document.body.paragraphs;
                 paragraphs.load();
 
@@ -82,8 +85,8 @@
 
 
                     for (var i = 0; i < paragraphs.items.length; i++) {
+                        console.log("6) processParagraphs loop");
                         var paragraph = paragraphs.items[i];
-                        console.log('Processing paragraph #' + i);
                         if (paragraph.style.indexOf('Code') === -1) {
                             if (isCode) {
                                 var oldStyle = paragraph.style;
@@ -155,10 +158,12 @@
             }
 
             function processWords() {
+                console.log("7) processWords called");
                 var paragraphs = context.document.body.paragraphs;
                 paragraphs.load();
 
                 return context.sync().then(function () {
+                    console.log("8) processWords loop");
                     for (var i = 0; i < paragraphs.items.length; i++)
                         handleWords(paragraphs.items[i]);
                 });
