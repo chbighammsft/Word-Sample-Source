@@ -14,23 +14,18 @@
         var context = Office.context;
 
         Word.run(function (context) {
-
             return context.sync()
                 .then(processHyperlinks)
                 .then(processTables)
                 .then(processParagraphs)
                 .then(processWords);
 
-            // return processWords();
-            // return processHyperlinks();
-
             function processHyperlinks() {
-                console.log("1) processHyperlinks called");
+                context.trace("Called processHyperlinks")
                 var hyperlinks = context.document.body.getRange().getHyperlinkRanges();
                 hyperlinks.load();
 
                 return context.sync().then(function () {
-                    console.log("2) processHyperlinks loop");
                     for (var i = 0; i < hyperlinks.items.length; i++) {
                         var link = hyperlinks.items[i];
                         var mdLink = '[' + link.text + '](' + link.hyperlink + ') ';
@@ -41,12 +36,11 @@
             }
 
             function processTables() {
-                console.log("3) processTables called");
+                context.trace("Called processTables");
                 var tables = context.document.body.tables;
-                tables.load()
+                tables.load();
 
                 context.sync().then(function () {
-                    console.log("4) processTables loop");
                     for (var i = 0; i < tables.items.length; i++) {
                         var table = tables.items[i];
 
@@ -65,7 +59,6 @@
                                 else {
                                     rowParagraph.insertText(cell + ' | ', 'End');
                                 }
-                                console.log();
                             }
                         }
                         table.deleteRows(0, table.rowCount);
@@ -74,7 +67,7 @@
             }
 
             function processParagraphs() {
-                console.log("5) processParagraphs called");
+                context.trace("Called processParagraphs");
                 var paragraphs = context.document.body.paragraphs;
                 paragraphs.load();
 
@@ -84,7 +77,6 @@
 
 
                     for (var i = 0; i < paragraphs.items.length; i++) {
-                        console.log("6) processParagraphs loop");
                         var paragraph = paragraphs.items[i];
                         if (paragraph.style.indexOf('Code') === -1) {
                             if (isCode) {
@@ -157,14 +149,12 @@
             }
 
             function processWords() {
-                console.log("7) processWords called");
+                context.trace("Called processWords");
                 var paragraphs = context.document.body.paragraphs;
                 paragraphs.load();
 
                 return context.sync().then(function () {
-                    console.log("8) processWords loop");
                     for (var i = 0; i < paragraphs.items.length; i++) {
-                        console.log("9) processing paragraph " + i);
                         handleWords(paragraphs.items[i]);
                     }
                 });
@@ -181,7 +171,6 @@
                             var nextWord = wordRanges.items[i + 1];
 
                             if (word.font.bold) {
-                                console.log('bold word found: ' + word.text);
                                 if ((typeof previousWord === 'undefined') || !previousWord.font.bold) {
                                     word.insertText('**', 'Start');
                                 }
@@ -191,7 +180,6 @@
                             }
 
                             if (word.font.italic) {
-                                console.log('italic word found: ' + word.text);
                                 if ((typeof previousWord === 'undefined') || !previousWord.font.italic) {
                                     word.insertText('*', 'Start');
                                 }
