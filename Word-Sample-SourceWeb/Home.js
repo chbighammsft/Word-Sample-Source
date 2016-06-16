@@ -14,12 +14,19 @@
         var context = Office.context;
 
         Word.run(function (context) {
+
+            // Main function
+            // Runs each of the processing functions in order.
             return context.sync()
                 .then(processHyperlinks)
                 .then(processTables)
                 .then(processParagraphs)
                 .then(processWords);
 
+            // End of main function.
+
+            // Gets a collection of all of the hyperlinks in a document and
+            // converts them to Markdown style hyperlinks.
             function processHyperlinks() {
                 context.trace("Called processHyperlinks")
                 var hyperlinks = context.document.body.getRange().getHyperlinkRanges();
@@ -35,6 +42,9 @@
                 });
             }
 
+            // Gets a collection of all of the tables in the document and converts
+            // them to Markdown-style tables with bold text in the header rows.
+            // The function does not currently handle justification in the table cells.
             function processTables() {
                 context.trace("Called processTables");
                 var tables = context.document.body.tables;
@@ -66,6 +76,14 @@
                 });
             }
 
+            // Gets a collection of all of the paragraphs in the document and then 
+            // converts paragraph styles to Markdown styles. The following styles
+            // are handled by this function:
+            //     * Normal
+            //     * Heading levels 1 through 4
+            //     * List
+            //     * Emphasis
+            //     * Code
             function processParagraphs() {
                 context.trace("Called processParagraphs");
                 var paragraphs = context.document.body.paragraphs;
@@ -148,6 +166,13 @@
                 });
             }
 
+            // Gets a collection of all of the paragraphs in a document and
+            // then for each paragraph gets a collection of all of the words
+            // in the paragraph. It checks each word to see if it's formatted
+            // italic or bold, and if so, outputs the appropriate Markdown
+            // code ("*" for italic, "**" for bold). If several words in a 
+            // row are styled the same, the Markdown code is only output at 
+            // the beginning and end of the string.
             function processWords() {
                 context.trace("Called processWords");
                 var paragraphs = context.document.body.paragraphs;
